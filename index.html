@@ -1,0 +1,1939 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#070d18">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="RevX Core">
+  <title id="pageTitle">RevX Nationwide Cellular | Enterprise App</title>
+
+  <!-- Inline App Manifest for Home-Screen / PWA / APK Packaging -->
+  <link rel="manifest" href='data:application/manifest+json,{"name":"RevX Nationwide Cellular","short_name":"RevX Core","start_url":".","display":"standalone","background_color":"#070d18","theme_color":"#070d18","orientation":"portrait","icons":[{"src":"data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 rx=%2722%27 fill=%27%230b1324%27/%3E%3Ccircle cx=%2750%27 cy=%2750%27 r=%2732%27 fill=%27none%27 stroke=%27%2322d3ee%27 stroke-width=%276%27/%3E%3Cpath d=%27M50 28 L50 72 M34 44 L50 28 L66 44%27 stroke=%27%23fb923c%27 stroke-width=%277%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27 fill=%27none%27/%3E%3C/svg%3E","sizes":"512x512","type":"image/svg+xml"}]}'>
+
+  <!-- Tailwind CSS & FontAwesome -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Firebase 10 Compat SDK (App + Realtime Database) -->
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-database-compat.js"></script>
+
+  <style>
+    :root {
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+    body {
+      background-color: #070d18;
+      color: #f1f5f9;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior-y: none;
+      padding-top: var(--safe-top);
+      padding-bottom: var(--safe-bottom);
+    }
+    .glass-card {
+      background: rgba(13, 22, 38, 0.95);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      backdrop-filter: blur(14px);
+    }
+    .glass-card-glow {
+      background: rgba(13, 22, 38, 0.97);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      box-shadow: 0 0 35px rgba(56, 189, 248, 0.14);
+    }
+    .holo-badge {
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.96) 0%, rgba(30, 41, 59, 0.96) 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .holo-badge::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: linear-gradient(45deg, transparent 40%, rgba(56, 189, 248, 0.12) 50%, rgba(249, 115, 22, 0.1) 55%, transparent 65%);
+      transform: rotate(25deg);
+      pointer-events: none;
+    }
+    .terminal-scroll::-webkit-scrollbar { width: 4px; }
+    .terminal-scroll::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-toast { animation: slideUp 0.22s ease-out forwards; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-cyan-500 selection:text-black">
+
+  <!-- ========================================================================= -->
+  <!--                     NATIVE-STYLE TOAST & MODAL SYSTEM                     -->
+  <!-- ========================================================================= -->
+  <div id="toastContainer" class="fixed top-4 left-1/2 -translate-x-1/2 z-[100] w-[92%] max-w-sm space-y-2 pointer-events-none"></div>
+
+  <!-- Custom App Dialog Modal (WebView & APK Safe) -->
+  <div id="appDialogModal" class="fixed inset-0 z-[90] bg-[#040711]/90 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="glass-card-glow max-w-sm w-full rounded-3xl p-6 border border-cyan-500/40 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 id="dialogTitle" class="text-sm font-bold text-white flex items-center space-x-2"></h3>
+        <button onclick="closeAppDialog()" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <p id="dialogMessage" class="text-xs text-slate-300 leading-relaxed"></p>
+      <div id="dialogInputWrap" class="hidden">
+        <input type="text" id="dialogInputField" class="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-xs text-white font-mono focus:outline-none focus:border-cyan-400">
+      </div>
+      <div class="flex space-x-2 pt-1">
+        <button id="dialogCancelBtn" onclick="closeAppDialog()" class="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 font-bold text-xs rounded-xl transition-all">
+          Cancel
+        </button>
+        <button id="dialogConfirmBtn" class="flex-1 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs rounded-xl transition-all">
+          Confirm
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!--                      GLOBAL SECURE AUTHENTICATION GATE                   -->
+  <!-- ========================================================================= -->
+  <div id="authScreen" class="min-h-screen flex items-center justify-center p-4">
+    <div class="relative w-full max-w-md">
+      <div class="absolute -top-10 -left-10 w-44 h-44 bg-cyan-500/15 rounded-full blur-3xl pointer-events-none"></div>
+      <div class="absolute -bottom-10 -right-10 w-44 h-44 bg-orange-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+      <div class="glass-card-glow rounded-3xl p-6 sm:p-8 shadow-2xl relative space-y-6">
+        
+        <!-- Brand Header -->
+        <div class="text-center space-y-2 border-b border-slate-800 pb-5">
+          <div id="authLogoContainer" class="w-16 h-16 mx-auto rounded-2xl bg-slate-900/90 border border-cyan-500/40 flex items-center justify-center overflow-hidden shadow-lg shadow-cyan-500/10">
+            <i class="fa-solid fa-tower-broadcast text-orange-400 text-3xl"></i>
+          </div>
+          <h1 id="authBrandName" class="text-2xl font-black tracking-widest text-white">REV<span class="text-cyan-400">X</span></h1>
+          <p id="authBrandSlogan" class="text-[10px] tracking-widest font-mono text-orange-400 font-bold uppercase">Nationwide Cellular</p>
+          <p class="text-xs text-slate-400">Zero-Trust Core Operations & Identity Gateway</p>
+          
+          <!-- Live Cloud Sync Badge -->
+          <div class="inline-flex items-center space-x-2 text-[10px] font-mono px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-slate-300 mt-1">
+            <span id="cloudStatusDot" class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <span id="cloudStatusText">Connecting to Firebase Server...</span>
+          </div>
+        </div>
+
+        <!-- STEP 1: Credential Login Form -->
+        <form id="loginForm" onsubmit="handleStep1Login(event)" class="space-y-4">
+          <div>
+            <label class="text-xs font-mono text-slate-300 block mb-1">Operator ID or Registered Gmail</label>
+            <div class="relative">
+              <i class="fa-solid fa-id-badge absolute left-3.5 top-3.5 text-cyan-400 text-xs"></i>
+              <input type="text" id="loginIdInput" required autocomplete="username" placeholder="REVX-EXEC-01, RVX-001, or name@gmail.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-3 py-3 text-xs text-white font-mono focus:outline-none focus:border-cyan-400 transition-colors">
+            </div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="text-xs font-mono text-slate-300">Security Password</label>
+              <span class="text-[10px] font-mono text-emerald-400"><i class="fa-solid fa-shield-halved mr-1"></i>2FA Protected</span>
+            </div>
+            <div class="relative">
+              <i class="fa-solid fa-lock absolute left-3.5 top-3.5 text-cyan-400 text-xs"></i>
+              <input type="password" id="loginPassInput" required autocomplete="current-password" placeholder="Enter password" class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-10 py-3 text-xs text-white font-mono focus:outline-none focus:border-cyan-400 transition-colors">
+              <button type="button" onclick="togglePasswordVisibility()" class="absolute right-3.5 top-3 text-slate-500 hover:text-slate-300 p-0.5">
+                <i id="passEyeIcon" class="fa-regular fa-eye text-xs"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between text-[11px] font-mono text-slate-400">
+            <label class="inline-flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" id="rememberSessionCheck" checked class="rounded bg-slate-950 border-slate-700 text-cyan-500 focus:ring-0">
+              <span>Keep me signed in on this device</span>
+            </label>
+          </div>
+
+          <!-- Error Alert -->
+          <div id="loginErrorMsg" class="hidden text-rose-400 text-xs font-mono p-2.5 bg-rose-950/60 border border-rose-900 rounded-xl text-center"></div>
+
+          <button type="submit" id="loginSubmitBtn" class="w-full py-3.5 bg-gradient-to-r from-cyan-500 via-sky-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 active:scale-[0.99] text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-cyan-500/20 flex items-center justify-center space-x-2 transition-all">
+            <i class="fa-solid fa-fingerprint text-base"></i>
+            <span>Verify & Send Security OTP</span>
+          </button>
+        </form>
+
+        <!-- STEP 2: Secure Real-Inbox OTP Verification Box (Never reveals OTP on screen) -->
+        <form id="loginOtpForm" onsubmit="handleStep2VerifyLoginOtp(event)" class="hidden space-y-4">
+          <div class="p-3.5 bg-cyan-950/50 border border-cyan-500/40 rounded-2xl space-y-1 text-center">
+            <div class="text-xs font-bold text-cyan-300"><i class="fa-solid fa-envelope-circle-check mr-1.5"></i>Real Security OTP Dispatched</div>
+            <p id="loginOtpSentTarget" class="text-[11px] font-mono text-slate-300">Check your registered Gmail inbox / SMS for your 6-digit code.</p>
+            <p class="text-[10px] font-mono text-slate-400">Code expires in 5 minutes • Never leaked on screen</p>
+          </div>
+
+          <div>
+            <label class="text-xs font-mono text-slate-300 block mb-1 text-center">Enter 6-Digit Verification Code</label>
+            <input type="text" id="loginOtpInput" required maxlength="6" pattern="[0-9]{6}" inputmode="numeric" placeholder="000000" class="w-full bg-slate-950 border border-cyan-500/50 rounded-xl px-4 py-3 text-center text-lg tracking-[0.5em] text-white font-mono font-bold focus:outline-none focus:border-cyan-400">
+          </div>
+
+          <div id="loginOtpErrorMsg" class="hidden text-rose-400 text-xs font-mono p-2 bg-rose-950/60 border border-rose-900 rounded-xl text-center"></div>
+
+          <div class="flex space-x-2">
+            <button type="button" onclick="cancelLoginOtp()" class="w-1/3 py-3 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-300 font-bold text-xs rounded-xl">
+              Back
+            </button>
+            <button type="submit" class="w-2/3 py-3 bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-black text-xs rounded-xl shadow-lg">
+              Confirm OTP & Enter
+            </button>
+          </div>
+        </form>
+
+        <!-- Gmail Self-Registration Trigger -->
+        <div class="text-center pt-3 border-t border-slate-800/80 space-y-1">
+          <button type="button" onclick="toggleRegisterModal(true)" class="text-xs text-cyan-400 hover:text-cyan-300 underline font-mono inline-flex items-center space-x-1.5">
+            <i class="fa-brands fa-google text-xs"></i>
+            <span>Register with Gmail & Real OTP</span>
+          </button>
+          <div class="text-[10px] font-mono text-slate-500">Requires verified @gmail.com inbox</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!--              GMAIL + REAL OTP REGISTRATION MODAL                          -->
+  <!-- ========================================================================= -->
+  <div id="registerModal" class="fixed inset-0 z-50 bg-[#040711]/95 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="glass-card-glow max-w-md w-full rounded-3xl p-6 sm:p-7 border border-cyan-500/40 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+          <i class="fa-brands fa-google text-orange-400"></i>
+          <span>Gmail Operator Verification</span>
+        </h3>
+        <button onclick="closeRegisterModal()" class="text-slate-400 hover:text-white p-1">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Registration Step 1 -->
+      <form id="regStep1Form" onsubmit="handleRegSendOtp(event)" class="space-y-3 text-xs">
+        <p class="text-slate-300">
+          Enter your details and a valid <strong>@gmail.com</strong> address. A real 6-digit OTP will be sent directly to your inbox.
+        </p>
+        <div>
+          <label class="block text-slate-300 mb-1 font-mono">Full Name</label>
+          <input type="text" id="regFullName" required placeholder="e.g. Rahul Sen" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white">
+        </div>
+        <div>
+          <label class="block text-slate-300 mb-1 font-mono">Gmail Address (@gmail.com)</label>
+          <input type="email" id="regEmail" required placeholder="yourname@gmail.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white font-mono">
+        </div>
+        <div>
+          <label class="block text-slate-300 mb-1 font-mono">Mobile Number (Optional for SMS Gateway)</label>
+          <input type="tel" id="regPhone" placeholder="+91 9876543210" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white font-mono">
+        </div>
+        <div>
+          <label class="block text-slate-300 mb-1 font-mono">Assigned Department</label>
+          <select id="regRole" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white font-mono">
+            <option value="Packet Core Routing">Packet Core Routing (5G SA)</option>
+            <option value="Tower RF Engineer">Tower RF & Spectrum Specialist</option>
+            <option value="Subscriber Care">Subscriber Provisioning & SIM Ops</option>
+            <option value="NOC Shift Dispatcher">NOC Shift Dispatcher</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-slate-300 mb-1 font-mono">Create Password</label>
+          <input type="password" id="regPassword" required minlength="6" placeholder="Minimum 6 characters" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white font-mono">
+        </div>
+
+        <div id="regStep1Error" class="hidden text-rose-400 text-xs font-mono p-2 bg-rose-950/60 border border-rose-900 rounded-xl text-center"></div>
+
+        <button type="submit" id="regSendOtpBtn" class="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black rounded-xl transition-all">
+          Send Verification OTP to Gmail
+        </button>
+      </form>
+
+      <!-- Registration Step 2: Verify Inbox OTP -->
+      <form id="regStep2Form" onsubmit="handleRegVerifyOtp(event)" class="hidden space-y-4 text-xs">
+        <div class="p-3.5 bg-emerald-950/40 border border-emerald-500/40 rounded-2xl text-center space-y-1">
+          <div class="font-bold text-emerald-300"><i class="fa-solid fa-paper-plane mr-1.5"></i>OTP Sent to Your Gmail</div>
+          <p id="regTargetEmailLabel" class="font-mono text-slate-300 text-[11px]"></p>
+          <p class="font-mono text-slate-400 text-[10px]">Open your Gmail app and enter the 6-digit code below.</p>
+        </div>
+
+        <div>
+          <label class="block text-slate-300 mb-1 font-mono text-center">6-Digit Gmail OTP</label>
+          <input type="text" id="regOtpCodeInput" required maxlength="6" pattern="[0-9]{6}" inputmode="numeric" placeholder="000000" class="w-full bg-slate-950 border border-emerald-500/50 rounded-xl px-4 py-3 text-center text-lg tracking-[0.5em] text-white font-mono font-bold focus:outline-none">
+        </div>
+
+        <div id="regStep2Error" class="hidden text-rose-400 text-xs font-mono p-2 bg-rose-950/60 border border-rose-900 rounded-xl text-center"></div>
+
+        <div class="flex space-x-2">
+          <button type="button" onclick="resetRegForms()" class="w-1/3 py-2.5 bg-slate-900 border border-slate-700 text-slate-300 font-bold rounded-xl">Back</button>
+          <button type="submit" class="w-2/3 py-2.5 bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 font-black rounded-xl">
+            Verify & Create Account
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================================================= -->
+  <!--                      LOGGED-IN APPLICATION SHELL                          -->
+  <!-- ========================================================================= -->
+  <div id="portalDashboard" class="hidden flex-grow flex flex-col pb-20 md:pb-6">
+    
+    <!-- Top App Header -->
+    <header class="glass-card sticky top-0 z-40 border-b border-slate-800 px-4 sm:px-6 py-2.5">
+      <div class="max-w-7xl mx-auto flex items-center justify-between gap-3">
+        
+        <!-- Brand & Active Identity -->
+        <div class="flex items-center space-x-3">
+          <div id="navLogoContainer" class="w-9 h-9 rounded-xl bg-slate-900 border border-cyan-500/30 flex items-center justify-center overflow-hidden">
+            <i class="fa-solid fa-tower-broadcast text-orange-400 text-base"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span id="navBrandName" class="font-black text-base tracking-wider text-white">REV<span class="text-cyan-400">X</span></span>
+              <span id="userRoleBadge" class="text-[9px] uppercase font-mono px-2 py-0.5 rounded-full font-bold"></span>
+            </div>
+            <div class="flex items-center space-x-1.5 text-[10px] text-slate-400 font-mono">
+              <span id="userNameDisplay" class="text-white font-semibold truncate max-w-[120px] sm:max-w-none"></span>
+              <span>•</span>
+              <span id="userIdDisplay" class="text-cyan-300 font-bold"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Server Indicator -->
+        <div class="flex items-center space-x-2">
+          <div class="flex items-center space-x-1.5 px-2.5 py-1 bg-slate-900/90 border border-slate-800 rounded-xl text-[10px] font-mono">
+            <span id="headerCloudDot" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="headerCloudLabel" class="text-emerald-400 font-bold">DB LIVE</span>
+          </div>
+          <button onclick="handleUniversalLogout()" class="px-3 py-1.5 bg-slate-900 hover:bg-rose-950 border border-slate-800 hover:border-rose-900 text-rose-400 rounded-xl text-xs font-mono transition-colors flex items-center space-x-1.5">
+            <i class="fa-solid fa-power-off text-xs"></i>
+            <span class="hidden sm:inline">Logout</span>
+          </button>
+        </div>
+
+      </div>
+    </header>
+
+    <!-- Live Network Broadcast Marquee -->
+    <div id="alertBanner" class="bg-cyan-950/70 border-b border-cyan-800/40 px-4 py-1.5 text-xs text-cyan-200">
+      <div class="max-w-7xl mx-auto flex items-center justify-between text-[11px] font-mono">
+        <span id="bannerText" class="truncate"><i class="fa-solid fa-bullhorn text-orange-400 mr-2"></i>RevX Global 5G SA Packet Core Operational Across All Regions.</span>
+        <span id="bannerNodeLabel" class="hidden sm:inline text-slate-400 shrink-0 ml-3">Node: KOL-SALT-LAKE-01</span>
+      </div>
+    </div>
+
+    <!-- Main App Content -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 space-y-6">
+
+      <!-- ================================================================= -->
+      <!-- SECTION 1: EXECUTIVE COMMAND CENTER (CEO / COO ONLY)              -->
+      <!-- ================================================================= -->
+      <div id="execSuitePanel" class="space-y-6 hidden">
+        
+        <div class="flex items-center justify-between">
+          <h2 class="text-xs font-mono uppercase tracking-widest text-amber-400 font-bold flex items-center space-x-2">
+            <i class="fa-solid fa-crown"></i>
+            <span>Executive Command & Live App Control</span>
+          </h2>
+        </div>
+
+        <!-- Executive Sub-Tabs -->
+        <div class="flex flex-wrap gap-2 border-b border-slate-800 pb-2 text-xs font-mono">
+          <button onclick="switchExecTab('roster')" id="execTabBtn-roster" class="px-3.5 py-1.5 rounded-xl bg-cyan-500 text-slate-950 font-bold transition-all">
+            <i class="fa-solid fa-users-gear mr-1.5"></i>Staff & Passwords
+          </button>
+          <button onclick="switchExecTab('empview')" id="execTabBtn-empview" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white transition-all">
+            <i class="fa-solid fa-sliders mr-1.5"></i>Employee View Studio
+          </button>
+          <button onclick="switchExecTab('otpgateway')" id="execTabBtn-otpgateway" class="px-3.5 py-1.5 rounded-xl text-emerald-400 hover:text-white transition-all">
+            <i class="fa-solid fa-envelope-shield mr-1.5"></i>Real OTP Gateway
+          </button>
+          <button onclick="switchExecTab('branding')" id="execTabBtn-branding" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white transition-all">
+            <i class="fa-solid fa-palette mr-1.5"></i>Branding
+          </button>
+          <button onclick="switchExecTab('tickets')" id="execTabBtn-tickets" class="px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white transition-all">
+            <i class="fa-solid fa-clipboard-check mr-1.5"></i>Incidents
+          </button>
+          <button onclick="switchExecTab('recovery')" id="execTabBtn-recovery" class="px-3.5 py-1.5 rounded-xl text-amber-400 hover:text-white transition-all">
+            <i class="fa-solid fa-file-import mr-1.5"></i>Backup Upload & Sync
+          </button>
+        </div>
+
+        <!-- TAB A: Staff Directory & Live Password Control -->
+        <div id="execTabContent-roster" class="space-y-6">
+          
+          <!-- Executive Provisioning Form -->
+          <div class="glass-card p-5 sm:p-6 rounded-2xl border border-slate-800 space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                <i class="fa-solid fa-user-plus text-cyan-400"></i>
+                <span>Add New Employee Directly</span>
+              </h3>
+              <span class="text-[10px] font-mono text-cyan-300">Auto-Syncs to Firebase</span>
+            </div>
+
+            <form onsubmit="handleExecProvision(event)" class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs font-mono">
+              <div>
+                <label class="block text-slate-400 mb-1">Full Name</label>
+                <input type="text" id="execNewName" required placeholder="e.g. Ananya Das" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:border-cyan-400">
+              </div>
+              <div>
+                <label class="block text-slate-400 mb-1">Gmail Address</label>
+                <input type="email" id="execNewEmail" required placeholder="ananya@gmail.com" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:border-cyan-400">
+              </div>
+              <div>
+                <label class="block text-slate-400 mb-1">Phone (Optional)</label>
+                <input type="tel" id="execNewPhone" placeholder="+91 9876543210" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:border-cyan-400">
+              </div>
+              <div>
+                <label class="block text-slate-400 mb-1">Department Role</label>
+                <input type="text" id="execNewRole" required placeholder="Core RF Ops" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white focus:border-cyan-400">
+              </div>
+              <div class="sm:col-span-4">
+                <button type="submit" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl transition-all flex items-center justify-center space-x-2">
+                  <i class="fa-solid fa-shield-check"></i>
+                  <span>Issue Operator Credentials</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Global Personnel Roster -->
+          <div class="glass-card p-5 sm:p-6 rounded-2xl border border-slate-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+                <i class="fa-solid fa-users text-cyan-400"></i>
+                <span>Global Personnel & Live Passwords</span>
+              </h3>
+              <span id="rosterCountBadge" class="text-[10px] font-mono bg-slate-900 border border-slate-800 px-2.5 py-0.5 rounded-full text-cyan-300">0 Active</span>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs font-mono">
+                <thead class="text-slate-400 border-b border-slate-800 text-[10px] uppercase">
+                  <tr>
+                    <th class="pb-2 pr-3">ID</th>
+                    <th class="pb-2 pr-3">Name</th>
+                    <th class="pb-2 pr-3">Gmail</th>
+                    <th class="pb-2 pr-3">Role</th>
+                    <th class="pb-2 pr-3 text-orange-400">Password</th>
+                    <th class="pb-2 text-right">Controls</th>
+                  </tr>
+                </thead>
+                <tbody id="execRosterTableBody" class="divide-y divide-slate-800/60"></tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- TAB B: Employee View Studio (Control What Employees See) -->
+        <div id="execTabContent-empview" class="hidden glass-card p-5 sm:p-6 rounded-2xl border border-slate-800 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+              <i class="fa-solid fa-sliders text-cyan-400"></i>
+              <span>Employee View Studio (Live Remote Update)</span>
+            </h3>
+            <span class="text-[10px] font-mono text-cyan-300">Updates All Employee Screens Instantly</span>
+          </div>
+
+          <form onsubmit="handleSaveEmployeeView(event)" class="space-y-4 text-xs font-mono">
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-slate-400 mb-1">Active Serving Core Node Name</label>
+                <input type="text" id="viewNodeInput" placeholder="KOL-SALT-LAKE-01" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white">
+              </div>
+              <div>
+                <label class="block text-slate-400 mb-1">Shift Directive / Priority Notice</label>
+                <input type="text" id="viewDirectiveInput" placeholder="All 5G SA sectors operating at 100% SLA." class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white">
+              </div>
+            </div>
+
+            <div class="space-y-2 pt-2 border-t border-slate-800">
+              <div class="text-slate-300 font-bold">Toggle Modules Visible to Employees:</div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <label class="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer">
+                  <span><i class="fa-solid fa-sim-card text-cyan-400 mr-2"></i>SIM / eSIM Provisioning</span>
+                  <input type="checkbox" id="modToggleSim" checked class="rounded bg-slate-900 border-slate-700 text-cyan-500">
+                </label>
+                <label class="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer">
+                  <span><i class="fa-solid fa-satellite-dish text-orange-400 mr-2"></i>RF Spectrum & Ping Tool</span>
+                  <input type="checkbox" id="modToggleRf" checked class="rounded bg-slate-900 border-slate-700 text-cyan-500">
+                </label>
+                <label class="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer">
+                  <span><i class="fa-solid fa-terminal text-emerald-400 mr-2"></i>JunOS Telecom CLI Shell</span>
+                  <input type="checkbox" id="modToggleCli" checked class="rounded bg-slate-900 border-slate-700 text-cyan-500">
+                </label>
+                <label class="flex items-center justify-between p-3 bg-slate-950 border border-slate-800 rounded-xl cursor-pointer">
+                  <span><i class="fa-solid fa-file-shield text-amber-400 mr-2"></i>Field Incident Dispatch</span>
+                  <input type="checkbox" id="modToggleTickets" checked class="rounded bg-slate-900 border-slate-700 text-cyan-500">
+                </label>
+              </div>
+            </div>
+
+            <button type="submit" class="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black rounded-xl transition-all">
+              Push View Update to All Employee Devices
+            </button>
+          </form>
+        </div>
+
+        <!-- TAB C: Real OTP Gateway Configuration (EmailJS / SMS API) -->
+        <div id="execTabContent-otpgateway" class="hidden glass-card p-5 sm:p-6 rounded-2xl border border-emerald-500/30 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="text-sm font-bold text-emerald-400 flex items-center space-x-2">
+              <i class="fa-solid fa-envelope-shield"></i>
+              <span>Real Gmail & SMS OTP Gateway Configuration</span>
+            </h3>
+            <span class="text-[10px] font-mono text-slate-400">Zero On-Screen Leaks</span>
+          </div>
+
+          <div class="p-3.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 space-y-1.5">
+            <div class="font-bold text-cyan-300"><i class="fa-solid fa-circle-info mr-1"></i> How Real Inbox OTP Works:</div>
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              OTPs are <strong>never</strong> displayed inside the app screen. Connect your free <strong>EmailJS</strong> account (200 real Gmail deliveries/month free at <span class="text-cyan-400">emailjs.com</span>) or an SMS API webhook below. Once saved, keys sync to Firebase so every device sends real inbox codes automatically.
+            </p>
+          </div>
+
+          <form onsubmit="handleSaveOtpGateway(event)" class="space-y-3 text-xs font-mono">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div>
+                <label class="block text-slate-400 mb-1">EmailJS Service ID</label>
+                <input type="text" id="otpEmailjsService" placeholder="service_xxxxxxx" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+              </div>
+              <div>
+                <label class="block text-slate-400 mb-1">EmailJS Template ID</label>
+                <input type="text" id="otpEmailjsTemplate" placeholder="template_xxxxxxx" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+              </div>
+              <div>
+                <label class="block text-slate-400 mb-1">EmailJS Public Key</label>
+                <input type="text" id="otpEmailjsKey" placeholder="user_xxxxxxxxxxxx" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-800/80">
+              <div>
+                <label class="block text-slate-400 mb-1">Optional SMS Gateway Webhook URL</label>
+                <input type="url" id="otpSmsUrl" placeholder="https://www.fast2sms.com/dev/bulkV2" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+              </div>
+              <div>
+                <label class="block text-slate-400 mb-1">SMS Gateway API Key</label>
+                <input type="password" id="otpSmsKey" placeholder="Bearer / Authorization Key" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+              </div>
+            </div>
+
+            <label class="flex items-center space-x-2 pt-1 cursor-pointer text-slate-300">
+              <input type="checkbox" id="otpRequireLoginCheck" checked class="rounded bg-slate-950 border-slate-700 text-emerald-500">
+              <span>Require 6-Digit Inbox OTP on Employee Login (2FA)</span>
+            </label>
+
+            <div class="flex flex-col sm:flex-row gap-2 pt-2">
+              <button type="submit" class="flex-1 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl transition-all">
+                Save Gateway Keys to Cloud
+              </button>
+              <button type="button" onclick="sendTestGatewayOtp()" class="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-cyan-300 font-bold rounded-xl">
+                Send Test OTP to My Gmail
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- TAB D: Branding Studio -->
+        <div id="execTabContent-branding" class="hidden glass-card p-5 sm:p-6 rounded-2xl border border-slate-800 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+              <i class="fa-solid fa-palette text-cyan-400"></i>
+              <span>Live Global Branding & Logo Studio</span>
+            </h3>
+            <span class="text-xs font-mono text-amber-400">Root CEO Only</span>
+          </div>
+
+          <form onsubmit="handleSaveBranding(event)" class="space-y-4 text-xs font-mono">
+            <div>
+              <label class="block text-slate-400 mb-1">Upload App Logo (Device Gallery / Files)</label>
+              <input type="file" id="brandLogoFileInput" accept="image/*" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-slate-300">
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-slate-400 mb-1">Carrier Name</label>
+                <input type="text" id="brandNameInput" placeholder="RevX" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white">
+              </div>
+              <div>
+                <label class="block text-slate-400 mb-1">Carrier Slogan</label>
+                <input type="text" id="brandSloganInput" placeholder="Nationwide Cellular" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white">
+              </div>
+            </div>
+            <div>
+              <label class="block text-slate-400 mb-1">Global Network Alert Banner</label>
+              <input type="text" id="brandAlertInput" placeholder="RevX 5G Core Live" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-white">
+            </div>
+            <button type="submit" class="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl transition-all">
+              Publish Branding to All Users
+            </button>
+          </form>
+        </div>
+
+        <!-- TAB E: Global Incident Ledger -->
+        <div id="execTabContent-tickets" class="hidden glass-card p-5 sm:p-6 rounded-2xl border border-slate-800 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+            <h3 class="text-sm font-bold text-white flex items-center space-x-2">
+              <i class="fa-solid fa-clipboard-list text-cyan-400"></i>
+              <span>Operator Field Reports & NOC Tickets</span>
+            </h3>
+            <button onclick="promptClearTickets()" class="text-xs text-rose-400 hover:text-rose-300 font-mono">Clear Ledger</button>
+          </div>
+          <div id="execTicketContainer" class="space-y-2 text-xs font-mono"></div>
+        </div>
+
+        <!-- TAB F: Backup File Upload / Download & Database Sync -->
+        <div id="execTabContent-recovery" class="hidden glass-card p-5 sm:p-6 rounded-2xl border border-amber-500/30 space-y-5">
+          <div class="border-b border-slate-800 pb-3">
+            <h3 class="text-sm font-bold text-amber-400 flex items-center space-x-2">
+              <i class="fa-solid fa-file-import"></i>
+              <span>Backup File Import / Export & Database Sync</span>
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">
+              Download your live Firebase database as a <code>.json</code> backup file, edit employee names, passwords, roles, or Gmail addresses on your phone/PC, and upload the file back here to update everything instantly.
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs font-mono">
+            <!-- 1. Export Backup -->
+            <div class="p-4 bg-slate-950 rounded-xl border border-slate-800 space-y-2.5 flex flex-col justify-between">
+              <div class="space-y-1.5">
+                <div class="font-bold text-emerald-400"><i class="fa-solid fa-download mr-1.5"></i>1. Download Backup (.json)</div>
+                <p class="text-[11px] text-slate-400">Exports all current employee accounts, passwords, and settings from Firebase.</p>
+              </div>
+              <button onclick="downloadJsonBackup()" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black rounded-xl transition-all">
+                Download Backup File
+              </button>
+            </div>
+
+            <!-- 2. Upload / Import Backup File -->
+            <div class="p-4 bg-slate-950 rounded-xl border border-cyan-500/40 space-y-2.5 flex flex-col justify-between">
+              <div class="space-y-1.5">
+                <div class="font-bold text-cyan-400"><i class="fa-solid fa-upload mr-1.5"></i>2. Upload Updated Backup</div>
+                <p class="text-[11px] text-slate-400">Select your edited <code>.json</code> backup file to update all employee details on the server.</p>
+              </div>
+              <div>
+                <input type="file" id="restoreBackupFileInput" accept=".json,application/json" onchange="handleRestoreBackupFile(event)" class="hidden">
+                <button onclick="document.getElementById('restoreBackupFileInput').click()" class="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black rounded-xl transition-all">
+                  Select & Upload Backup
+                </button>
+              </div>
+            </div>
+
+            <!-- 3. Factory Reset -->
+            <div class="p-4 bg-rose-950/30 rounded-xl border border-rose-900/60 space-y-2.5 flex flex-col justify-between">
+              <div class="space-y-1.5">
+                <div class="font-bold text-rose-400"><i class="fa-solid fa-rotate-left mr-1.5"></i>3. Factory Reset</div>
+                <p class="text-[11px] text-slate-400">Restores default CEO/COO/Operator credentials on Firebase.</p>
+              </div>
+              <button onclick="promptFactoryReset()" class="w-full py-2.5 bg-rose-900 hover:bg-rose-800 text-white font-bold rounded-xl transition-all">
+                Reset to Defaults
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- SECTION 2: OPERATOR WORKSTATION (FOR ALL LOGGED-IN USERS)         -->
+      <!-- ================================================================= -->
+      <div id="operatorSuitePanel" class="space-y-6">
+
+        <!-- Digital Holographic ID Card -->
+        <div id="section-profile" class="glass-card p-5 sm:p-6 rounded-3xl border border-cyan-500/25 holo-badge">
+          <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div class="flex items-center space-x-4">
+              <div id="empAvatarInitial" class="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-tr from-cyan-600 via-sky-600 to-blue-700 flex items-center justify-center text-xl sm:text-2xl font-bold text-white font-mono shadow-xl border border-cyan-300/30 shrink-0">
+                OP
+              </div>
+              <div class="space-y-1">
+                <div class="flex flex-wrap items-center gap-2">
+                  <h2 id="empProfileName" class="text-lg sm:text-xl font-bold text-white">Operator</h2>
+                  <span class="bg-cyan-950 text-cyan-300 border border-cyan-700 text-[10px] font-mono px-2 py-0.5 rounded font-bold uppercase">VERIFIED</span>
+                </div>
+                <p class="text-xs text-slate-300 font-mono">
+                  ID: <strong id="empProfileId" class="text-cyan-400">RVX-001</strong> • 
+                  <span id="empProfileRole" class="text-slate-300">Core Ops</span>
+                </p>
+                <p class="text-[11px] text-slate-400 font-mono truncate max-w-[240px] sm:max-w-none" id="empProfileEmail">op1@revx.net</p>
+                <p id="empDirectiveBanner" class="text-[11px] font-mono text-amber-300 pt-0.5"><i class="fa-solid fa-bolt mr-1"></i>All 5G SA sectors operating at 100% SLA.</p>
+              </div>
+            </div>
+
+            <div class="flex flex-col sm:items-end justify-center font-mono text-xs space-y-1 border-t md:border-t-0 border-slate-800/80 pt-3 md:pt-0">
+              <div class="flex items-center space-x-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                <span class="text-emerald-400 font-bold">5G SA LBO CORE ACTIVE</span>
+              </div>
+              <div class="text-[11px] text-slate-400">Gateway: <strong id="empServingNodeText" class="text-white">KOL-SALT-LAKE-01</strong></div>
+              <div class="text-[11px] text-slate-400">Encryption: <strong class="text-cyan-300">AES-256-GCM</strong></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Operational Modules Grid -->
+        <div id="section-tools" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+          <!-- 1. SIM / eSIM Provisioning Engine -->
+          <div id="moduleCard-sim" class="glass-card p-5 rounded-2xl border border-slate-800 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+              <h3 class="text-xs font-bold text-white flex items-center space-x-2">
+                <i class="fa-solid fa-sim-card text-cyan-400"></i>
+                <span>SIM / eSIM Provisioning</span>
+              </h3>
+              <span class="text-[9px] font-mono text-emerald-400 uppercase">3GPP Rel-17</span>
+            </div>
+
+            <form onsubmit="handleProvisionSim(event)" class="space-y-3 text-xs font-mono">
+              <div>
+                <label class="block text-slate-400 mb-1">IMSI / ICCID Number</label>
+                <div class="flex space-x-2">
+                  <input type="text" id="simImsiInput" required placeholder="8991... (20-digit)" class="flex-grow bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+                  <button type="button" onclick="generateRandomImsi()" class="px-3 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-cyan-300 rounded-xl text-[10px] font-bold">Gen</button>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-slate-400 mb-1">APN Routing Profile</label>
+                <select id="simApnSelect" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+                  <option value="revx.cellular.direct">revx.cellular.direct (5G Internet LBO)</option>
+                  <option value="revx.ims.vo5g">revx.ims.vo5g (VoNR / HD Voice)</option>
+                  <option value="revx.private.apn">revx.private.apn (Enterprise Zero-Trust)</option>
+                </select>
+              </div>
+
+              <button type="submit" class="w-full py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold rounded-xl transition-all">
+                Provision Subscriber
+              </button>
+            </form>
+
+            <div id="simProvisionOutput" class="hidden p-3 bg-slate-950 rounded-xl border border-slate-800 text-[11px] font-mono space-y-1"></div>
+          </div>
+
+          <!-- 2. Radio Spectrum & Latency Diagnostic -->
+          <div id="moduleCard-rf" class="glass-card p-5 rounded-2xl border border-slate-800 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+              <h3 class="text-xs font-bold text-white flex items-center space-x-2">
+                <i class="fa-solid fa-satellite-dish text-orange-400"></i>
+                <span>RF Spectrum & Latency</span>
+              </h3>
+              <span id="pingValueBadge" class="text-[10px] font-mono text-cyan-300 font-bold">12ms</span>
+            </div>
+
+            <div class="space-y-3 text-xs font-mono">
+              <div>
+                <label class="block text-slate-400 mb-1">5G NR Frequency Band</label>
+                <select id="bandSelect" onchange="updateBandParameters()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+                  <option value="n78">n78 (3500 MHz) - High-Capacity C-Band</option>
+                  <option value="n28">n28 (700 MHz) - Nationwide Deep Coverage</option>
+                  <option value="n258">n258 (26 GHz) - Ultra-Dense mmWave</option>
+                </select>
+              </div>
+
+              <div class="space-y-1">
+                <div class="flex justify-between text-[11px] text-slate-400">
+                  <span>Signal Power (RSRP):</span>
+                  <span id="rsrpValueText" class="text-emerald-400 font-bold">-78 dBm (Strong)</span>
+                </div>
+                <div class="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-800">
+                  <div id="rsrpBar" class="bg-gradient-to-r from-emerald-500 to-cyan-400 h-2 rounded-full w-[88%] transition-all duration-500"></div>
+                </div>
+              </div>
+
+              <button onclick="runPacketPingTest()" id="btnPingTest" class="w-full py-2.5 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-cyan-300 font-bold rounded-xl transition-all flex items-center justify-center space-x-2">
+                <i class="fa-solid fa-stopwatch"></i>
+                <span>Run Core Ping Test</span>
+              </button>
+
+              <div id="pingTraceLog" class="text-[10px] text-slate-400 p-2.5 bg-slate-950 rounded-xl border border-slate-800/80">
+                Core Ping: 0% packet loss across 3GPP UPF gateway.
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Self-Service Password & Shift Incident Reporter -->
+          <div id="moduleCard-tickets" class="glass-card p-5 rounded-2xl border border-slate-800 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+              <h3 class="text-xs font-bold text-white flex items-center space-x-2">
+                <i class="fa-solid fa-file-shield text-emerald-400"></i>
+                <span>Security & Incident Dispatch</span>
+              </h3>
+              <span class="text-[9px] font-mono text-cyan-400">Live Sync</span>
+            </div>
+
+            <!-- Password Updater -->
+            <form onsubmit="handleEmpUpdateOwnPassword(event)" class="space-y-2 text-xs font-mono">
+              <label class="block text-slate-400">Change My Password</label>
+              <div class="flex space-x-2">
+                <input type="password" id="empSelfNewPass" required minlength="6" placeholder="New Secret Password" class="flex-grow bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white">
+                <button type="submit" class="px-3.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs">Save</button>
+              </div>
+            </form>
+
+            <!-- Incident Reporter -->
+            <form id="empTicketSubForm" onsubmit="handleTransmitTicket(event)" class="space-y-2 text-xs font-mono pt-2 border-t border-slate-800/80">
+              <label class="block text-slate-400">Transmit Field / NOC Report</label>
+              <select id="empTicketPriority" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-xs">
+                <option value="P3 Routine">P3 - Routine Maintenance Log</option>
+                <option value="P2 Warning">P2 - Cell Site Latency Spike</option>
+                <option value="P1 Critical">P1 - Fiber Backhaul Cut</option>
+              </select>
+              <textarea id="empTicketDetails" required placeholder="Describe operational status..." rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white text-xs"></textarea>
+              <button type="submit" class="w-full py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl transition-all">
+                Transmit to NOC Ledger
+              </button>
+            </form>
+          </div>
+
+        </div>
+
+        <!-- 4. Interactive Core Telecom CLI Console -->
+        <div id="section-cli" class="glass-card p-5 rounded-2xl border border-slate-800 space-y-3 font-mono">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <div class="flex items-center space-x-2 text-xs text-white">
+              <i class="fa-solid fa-terminal text-cyan-400"></i>
+              <span>RevX Carrier Command Shell (JunOS / Telecom CLI)</span>
+            </div>
+            <span class="text-[10px] text-slate-400">Type 'help'</span>
+          </div>
+
+          <div id="cliOutputArea" class="h-44 bg-slate-950 rounded-xl p-3 text-xs text-slate-300 overflow-y-auto space-y-1 terminal-scroll font-mono border border-slate-900">
+            <div class="text-cyan-400">RevX Packet Core JunOS Terminal v26.4 [Build SA-8991]</div>
+            <div class="text-slate-500">Authenticated as <span class="text-white font-bold" id="cliAuthUser">OPERATOR</span>.</div>
+            <div class="text-slate-500">Type 'help' to view supported diagnostic commands.</div>
+          </div>
+
+          <form onsubmit="handleExecuteCli(event)" class="flex space-x-2 text-xs">
+            <span class="text-cyan-400 py-2 pl-1 select-none font-bold">revx#</span>
+            <input type="text" id="cliCommandInput" placeholder="status, ping 8.8.8.8, nodes, whoami..." class="flex-grow bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-white focus:outline-none focus:border-cyan-400 font-mono">
+            <button type="submit" class="px-4 bg-slate-900 hover:bg-slate-800 border border-slate-700 text-cyan-300 font-bold rounded-xl">Run</button>
+          </form>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- Mobile App Bottom Navigation Bar -->
+    <nav class="md:hidden fixed bottom-0 inset-x-0 z-40 glass-card border-t border-slate-800 px-2 py-2 flex justify-around items-center text-[10px] font-mono">
+      <button onclick="scrollToSection('section-profile')" class="flex flex-col items-center space-y-1 text-cyan-400 px-3 py-1">
+        <i class="fa-solid fa-id-card text-sm"></i>
+        <span>ID Badge</span>
+      </button>
+      <button onclick="scrollToSection('section-tools')" class="flex flex-col items-center space-y-1 text-slate-300 hover:text-cyan-400 px-3 py-1">
+        <i class="fa-solid fa-tower-cell text-sm"></i>
+        <span>5G Tools</span>
+      </button>
+      <button onclick="scrollToSection('section-cli')" class="flex flex-col items-center space-y-1 text-slate-300 hover:text-cyan-400 px-3 py-1">
+        <i class="fa-solid fa-terminal text-sm"></i>
+        <span>CLI Shell</span>
+      </button>
+      <button id="mobileExecNavBtn" onclick="scrollToSection('execSuitePanel')" class="hidden flex flex-col items-center space-y-1 text-amber-400 px-3 py-1">
+        <i class="fa-solid fa-crown text-sm"></i>
+        <span>Admin</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- ========================================================================= -->
+  <!--                 FIREBASE REALTIME ENGINE & APP CONTROLLER                 -->
+  <!-- ========================================================================= -->
+  <script>
+    // Connected Firebase Project Configuration (revxwebsite)
+    const firebaseConfig = {
+      apiKey: "AIzaSyAzXJ5jSZFwb85T7DDY3lFqHRI41GIDxgE",
+      authDomain: "revxwebsite.firebaseapp.com",
+      databaseURL: "https://revxwebsite-default-rtdb.firebaseio.com",
+      projectId: "revxwebsite",
+      storageBucket: "revxwebsite.firebasestorage.app",
+      messagingSenderId: "431049744597",
+      appId: "1:431049744597:web:e4bcd8012302235f68c25c",
+      measurementId: "G-Y92L8TWB8Z"
+    };
+
+    let db = null;
+    try {
+      firebase.initializeApp(firebaseConfig);
+      db = firebase.database();
+    } catch (e) {
+      console.error("Firebase init error:", e);
+    }
+
+    const MASTER_SEED_USERS = [
+      { id: "REVX-EXEC-01", pass: "RevX#Root2026", name: "Chief Executive (Root)", role: "Root CEO", email: "revx.ceo@gmail.com", phone: "", isExec: true, isRoot: true },
+      { id: "REVX-EXEC-02", pass: "RevX#Ops2026", name: "Executive VP", role: "Executive COO", email: "revx.coo@gmail.com", phone: "", isExec: true, isRoot: false },
+      { id: "RVX-001", pass: "RevX#Tech1", name: "Rahul Verma", role: "Packet Core Routing", email: "rahul.verma@revx.net", phone: "", isExec: false, isRoot: false },
+      { id: "RVX-002", pass: "RevX#Tech2", name: "Priya Sharma", role: "Tower RF Engineer", email: "priya.sharma@revx.net", phone: "", isExec: false, isRoot: false },
+      { id: "RVX-003", pass: "RevX#Tech3", name: "Amit Mukherjee", role: "Subscriber Care", email: "amit.m@revx.net", phone: "", isExec: false, isRoot: false }
+    ];
+
+    const MASTER_SEED_CONFIG = {
+      name: "RevX",
+      slogan: "Nationwide Cellular",
+      alert: "RevX Global 5G SA Packet Core Operational Across All Regions.",
+      logo: null,
+      nodeName: "KOL-SALT-LAKE-01",
+      directive: "All 5G SA sectors operating at 100% SLA.",
+      modules: { sim: true, rf: true, cli: true, tickets: true },
+      otpGateway: {
+        emailjsServiceId: "",
+        emailjsTemplateId: "",
+        emailjsPublicKey: "",
+        smsWebhookUrl: "",
+        smsApiKey: "",
+        requireLoginOtp: true
+      }
+    };
+
+    let stateUsers = JSON.parse(localStorage.getItem("revx_fb_users")) || MASTER_SEED_USERS;
+    let stateConfig = JSON.parse(localStorage.getItem("revx_fb_config")) || MASTER_SEED_CONFIG;
+    let stateTickets = JSON.parse(localStorage.getItem("revx_fb_tickets")) || [
+      { author: "Priya Sharma (RVX-002)", priority: "P3 Routine", note: "Salt Lake Sector 3 5G beamforming calibrated.", time: "10:14 AM" }
+    ];
+
+    let currentUser = null;
+    let dialogCallback = null;
+
+    // In-memory cryptographic OTP state (NEVER rendered to screen or stored in localStorage)
+    let pendingLoginOtp = null;
+    let pendingRegOtp = null;
+
+    function generateCryptographicOtp() {
+      const array = new Uint32Array(1);
+      window.crypto.getRandomValues(array);
+      return String((array[0] % 900000) + 100000);
+    }
+
+    function isOtpGatewayConfigured() {
+      const gw = stateConfig.otpGateway || {};
+      const hasEmailJs = !!(gw.emailjsServiceId && gw.emailjsTemplateId && gw.emailjsPublicKey);
+      const hasSms = !!(gw.smsWebhookUrl && gw.smsApiKey);
+      return { hasEmailJs, hasSms, ready: hasEmailJs || hasSms };
+    }
+
+    // Dispatches OTP strictly to external Gmail / SMS API (never shows on screen)
+    async function dispatchRealOtp({ email, phone, name, code }) {
+      const gw = stateConfig.otpGateway || {};
+      const status = isOtpGatewayConfigured();
+
+      if (!status.ready) {
+        return { ok: false, reason: "OTP Gateway keys not configured yet by Executive Admin." };
+      }
+
+      let delivered = false;
+
+      if (status.hasEmailJs && email) {
+        try {
+          const res = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              service_id: gw.emailjsServiceId,
+              template_id: gw.emailjsTemplateId,
+              user_id: gw.emailjsPublicKey,
+              template_params: {
+                to_email: email,
+                to_name: name || "RevX Operator",
+                otp_code: code,
+                passcode: code,
+                company_name: stateConfig.name || "RevX"
+              }
+            })
+          });
+          if (res.ok) delivered = true;
+        } catch (err) {
+          console.error("EmailJS dispatch error:", err);
+        }
+      }
+
+      if (status.hasSms && phone) {
+        try {
+          const res = await fetch(gw.smsWebhookUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": gw.smsApiKey
+            },
+            body: JSON.stringify({
+              to: phone,
+              phone: phone,
+              variables_values: code,
+              otp: code,
+              message: `Your ${stateConfig.name || "RevX"} security OTP is ${code}. Valid for 5 minutes.`
+            })
+          });
+          if (res.ok) delivered = true;
+        } catch (err) {
+          console.error("SMS webhook dispatch error:", err);
+        }
+      }
+
+      if (!delivered) {
+        return { ok: false, reason: "Failed to reach EmailJS/SMS server. Verify Gateway API keys." };
+      }
+
+      return { ok: true };
+    }
+
+    // Native-style Toast Notification
+    function showToast(message, type = "info") {
+      const container = document.getElementById("toastContainer");
+      const toast = document.createElement("div");
+      const colors = {
+        success: "bg-emerald-950/95 border-emerald-500/60 text-emerald-200",
+        error: "bg-rose-950/95 border-rose-500/60 text-rose-200",
+        info: "bg-slate-900/95 border-cyan-500/60 text-cyan-200"
+      };
+      const icons = {
+        success: "fa-circle-check text-emerald-400",
+        error: "fa-circle-exclamation text-rose-400",
+        info: "fa-tower-broadcast text-cyan-400"
+      };
+      toast.className = `animate-toast px-4 py-3 rounded-2xl border shadow-2xl text-xs font-mono flex items-center space-x-2.5 ${colors[type] || colors.info}`;
+      toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info} text-sm shrink-0"></i><span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = "0";
+        toast.style.transition = "opacity 0.25s ease";
+        setTimeout(() => toast.remove(), 260);
+      }, 3200);
+    }
+
+    // Custom Modal Dialog
+    function openAppDialog({ title, message, showInput = false, defaultValue = "", confirmText = "Confirm", danger = false, onConfirm }) {
+      document.getElementById("dialogTitle").innerHTML = title;
+      document.getElementById("dialogMessage").textContent = message;
+      const inputWrap = document.getElementById("dialogInputWrap");
+      const inputField = document.getElementById("dialogInputField");
+      if (showInput) {
+        inputWrap.classList.remove("hidden");
+        inputField.value = defaultValue;
+      } else {
+        inputWrap.classList.add("hidden");
+      }
+      const confirmBtn = document.getElementById("dialogConfirmBtn");
+      confirmBtn.textContent = confirmText;
+      confirmBtn.className = danger
+        ? "flex-1 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-black text-xs rounded-xl transition-all"
+        : "flex-1 py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black text-xs rounded-xl transition-all";
+      dialogCallback = onConfirm;
+      document.getElementById("appDialogModal").classList.remove("hidden");
+      if (showInput) setTimeout(() => inputField.focus(), 50);
+    }
+
+    function closeAppDialog() {
+      document.getElementById("appDialogModal").classList.add("hidden");
+      dialogCallback = null;
+    }
+
+    document.getElementById("dialogConfirmBtn").addEventListener("click", () => {
+      const val = document.getElementById("dialogInputField").value;
+      const cb = dialogCallback;
+      closeAppDialog();
+      if (cb) cb(val);
+    });
+
+    function scrollToSection(id) {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    // Branding & Employee View Renderer
+    function renderBrandingAndViewUI() {
+      document.getElementById("pageTitle").textContent = `${stateConfig.name} | ${stateConfig.slogan}`;
+      document.getElementById("authBrandName").innerHTML = stateConfig.name.replace("X", '<span class="text-cyan-400">X</span>');
+      document.getElementById("navBrandName").innerHTML = stateConfig.name.replace("X", '<span class="text-cyan-400">X</span>');
+      document.getElementById("authBrandSlogan").textContent = stateConfig.slogan;
+      document.getElementById("bannerText").innerHTML = `<i class="fa-solid fa-bullhorn text-orange-400 mr-2"></i> ${stateConfig.alert}`;
+
+      const node = stateConfig.nodeName || "KOL-SALT-LAKE-01";
+      document.getElementById("bannerNodeLabel").textContent = `Node: ${node}`;
+      document.getElementById("empServingNodeText").textContent = node;
+
+      const directive = stateConfig.directive || "All 5G SA sectors operating at 100% SLA.";
+      document.getElementById("empDirectiveBanner").innerHTML = `<i class="fa-solid fa-bolt mr-1"></i>${directive}`;
+
+      if (stateConfig.logo) {
+        const logoImg = `<img src="${stateConfig.logo}" class="w-full h-full object-contain">`;
+        document.getElementById("authLogoContainer").innerHTML = logoImg;
+        document.getElementById("navLogoContainer").innerHTML = logoImg;
+      }
+
+      // Apply module visibility controlled by Executive Employee View Studio
+      const mods = stateConfig.modules || { sim: true, rf: true, cli: true, tickets: true };
+      document.getElementById("moduleCard-sim").classList.toggle("hidden", !mods.sim);
+      document.getElementById("moduleCard-rf").classList.toggle("hidden", !mods.rf);
+      document.getElementById("section-cli").classList.toggle("hidden", !mods.cli);
+      document.getElementById("empTicketSubForm").classList.toggle("hidden", !mods.tickets);
+    }
+
+    // Non-Destructive Firebase Realtime Sync
+    function syncToCloud() {
+      localStorage.setItem("revx_fb_users", JSON.stringify(stateUsers));
+      localStorage.setItem("revx_fb_config", JSON.stringify(stateConfig));
+      localStorage.setItem("revx_fb_tickets", JSON.stringify(stateTickets));
+
+      if (db) {
+        db.ref("revx_live_network").set({
+          users: stateUsers,
+          config: stateConfig,
+          tickets: stateTickets,
+          lastUpdated: new Date().toISOString()
+        }).catch(err => {
+          console.error("Firebase write error:", err);
+          showToast("Saved locally. Check Firebase rules.", "error");
+        });
+      }
+    }
+
+    if (db) {
+      db.ref("revx_live_network").on("value", snapshot => {
+        const data = snapshot.val();
+        if (data && data.users && Array.isArray(data.users)) {
+          stateUsers = data.users;
+          stateConfig = Object.assign({}, MASTER_SEED_CONFIG, data.config || {});
+          stateConfig.modules = Object.assign({}, MASTER_SEED_CONFIG.modules, (data.config && data.config.modules) || {});
+          stateConfig.otpGateway = Object.assign({}, MASTER_SEED_CONFIG.otpGateway, (data.config && data.config.otpGateway) || {});
+          stateTickets = data.tickets || stateTickets;
+
+          localStorage.setItem("revx_fb_users", JSON.stringify(stateUsers));
+          localStorage.setItem("revx_fb_config", JSON.stringify(stateConfig));
+          localStorage.setItem("revx_fb_tickets", JSON.stringify(stateTickets));
+
+          renderBrandingAndViewUI();
+          if (currentUser) {
+            const refreshedMe = stateUsers.find(u => u.id === currentUser.id);
+            if (!refreshedMe) {
+              handleUniversalLogout();
+              showToast("Your access was revoked by Executive Admin.", "error");
+              return;
+            }
+            currentUser = refreshedMe;
+            setupDashboardForUser(false);
+          }
+
+          document.getElementById("cloudStatusDot").className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+          document.getElementById("cloudStatusText").textContent = "Firebase Cloud Connected";
+          document.getElementById("headerCloudDot").className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+          document.getElementById("headerCloudLabel").textContent = "DB LIVE";
+        } else {
+          // Initialize empty Firebase node without overwriting existing records
+          syncToCloud();
+        }
+      }, error => {
+        console.warn("Firebase read notice:", error);
+        document.getElementById("cloudStatusDot").className = "w-2 h-2 rounded-full bg-amber-400";
+        document.getElementById("cloudStatusText").textContent = "Offline / Local Cache Mode";
+        document.getElementById("headerCloudDot").className = "w-2 h-2 rounded-full bg-amber-400";
+        document.getElementById("headerCloudLabel").textContent = "LOCAL";
+      });
+    }
+
+    function togglePasswordVisibility() {
+      const input = document.getElementById("loginPassInput");
+      const icon = document.getElementById("passEyeIcon");
+      if (input.type === "password") {
+        input.type = "text";
+        icon.className = "fa-solid fa-eye-slash text-xs";
+      } else {
+        input.type = "password";
+        icon.className = "fa-regular fa-eye text-xs";
+      }
+    }
+
+    // Complete Login Session
+    function completeUserLogin(user) {
+      currentUser = user;
+      if (document.getElementById("rememberSessionCheck").checked) {
+        localStorage.setItem("revx_saved_session_id", user.id);
+      } else {
+        localStorage.removeItem("revx_saved_session_id");
+      }
+      document.getElementById("loginForm").classList.remove("hidden");
+      document.getElementById("loginOtpForm").classList.add("hidden");
+      document.getElementById("authScreen").classList.add("hidden");
+      document.getElementById("portalDashboard").classList.remove("hidden");
+      setupDashboardForUser(true);
+      showToast(`Welcome, ${user.name} (${user.id})`, "success");
+    }
+
+    // Step 1: Verify ID/Gmail + Password, then send Real Inbox OTP
+    async function handleStep1Login(e) {
+      e.preventDefault();
+      const rawId = document.getElementById("loginIdInput").value.trim();
+      const pass = document.getElementById("loginPassInput").value.trim();
+      const errBox = document.getElementById("loginErrorMsg");
+      const btn = document.getElementById("loginSubmitBtn");
+
+      const found = stateUsers.find(u =>
+        (u.id.toUpperCase() === rawId.toUpperCase() || (u.email && u.email.toLowerCase() === rawId.toLowerCase())) &&
+        u.pass === pass
+      );
+
+      if (!found) {
+        errBox.textContent = "Invalid ID/Gmail or Password.";
+        errBox.classList.remove("hidden");
+        return;
+      }
+
+      errBox.classList.add("hidden");
+
+      const gwStatus = isOtpGatewayConfigured();
+      const requireOtp = (stateConfig.otpGateway && stateConfig.otpGateway.requireLoginOtp !== false);
+
+      // Root CEO can enter directly if OTP Gateway isn't configured yet so they can configure it
+      if (!requireOtp || (!gwStatus.ready && found.isRoot)) {
+        completeUserLogin(found);
+        if (!gwStatus.ready && found.isRoot) {
+          showToast("Configure EmailJS/SMS keys in 'Real OTP Gateway' to activate 2FA.", "info");
+        }
+        return;
+      }
+
+      if (!gwStatus.ready) {
+        errBox.textContent = "Real OTP Gateway not yet configured by Root Admin.";
+        errBox.classList.remove("hidden");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i><span>Dispatching Real OTP...</span>`;
+
+      const code = generateCryptographicOtp();
+      const dispatchRes = await dispatchRealOtp({
+        email: found.email,
+        phone: found.phone,
+        name: found.name,
+        code
+      });
+
+      btn.disabled = false;
+      btn.innerHTML = `<i class="fa-solid fa-fingerprint text-base"></i><span>Verify & Send Security OTP</span>`;
+
+      if (!dispatchRes.ok) {
+        errBox.textContent = dispatchRes.reason;
+        errBox.classList.remove("hidden");
+        return;
+      }
+
+      // Store OTP in memory only (never displayed on screen)
+      pendingLoginOtp = {
+        code,
+        expiresAt: Date.now() + 5 * 60 * 1000,
+        attempts: 0,
+        user: found
+      };
+
+      const maskedEmail = found.email ? found.email.replace(/(.{2})(.*)(@.*)/, "$1***$3") : "your inbox";
+      document.getElementById("loginOtpSentTarget").textContent = `6-digit OTP sent to ${maskedEmail}`;
+      document.getElementById("loginOtpInput").value = "";
+      document.getElementById("loginOtpErrorMsg").classList.add("hidden");
+      document.getElementById("loginForm").classList.add("hidden");
+      document.getElementById("loginOtpForm").classList.remove("hidden");
+    }
+
+    // Step 2: Verify Login OTP
+    function handleStep2VerifyLoginOtp(e) {
+      e.preventDefault();
+      const entered = document.getElementById("loginOtpInput").value.trim();
+      const errBox = document.getElementById("loginOtpErrorMsg");
+
+      if (!pendingLoginOtp) {
+        cancelLoginOtp();
+        return;
+      }
+
+      if (Date.now() > pendingLoginOtp.expiresAt) {
+        pendingLoginOtp = null;
+        errBox.textContent = "OTP expired. Please request a new code.";
+        errBox.classList.remove("hidden");
+        return;
+      }
+
+      pendingLoginOtp.attempts += 1;
+      if (pendingLoginOtp.attempts > 3) {
+        pendingLoginOtp = null;
+        cancelLoginOtp();
+        showToast("Too many invalid OTP attempts. Locked.", "error");
+        return;
+      }
+
+      if (entered !== pendingLoginOtp.code) {
+        errBox.textContent = `Incorrect OTP (${3 - pendingLoginOtp.attempts} attempts left).`;
+        errBox.classList.remove("hidden");
+        return;
+      }
+
+      const verifiedUser = pendingLoginOtp.user;
+      pendingLoginOtp = null;
+      completeUserLogin(verifiedUser);
+    }
+
+    function cancelLoginOtp() {
+      pendingLoginOtp = null;
+      document.getElementById("loginOtpForm").classList.add("hidden");
+      document.getElementById("loginForm").classList.remove("hidden");
+    }
+
+    function handleUniversalLogout() {
+      currentUser = null;
+      pendingLoginOtp = null;
+      localStorage.removeItem("revx_saved_session_id");
+      document.getElementById("loginIdInput").value = "";
+      document.getElementById("loginPassInput").value = "";
+      document.getElementById("loginOtpForm").classList.add("hidden");
+      document.getElementById("loginForm").classList.remove("hidden");
+      document.getElementById("portalDashboard").classList.add("hidden");
+      document.getElementById("authScreen").classList.remove("hidden");
+      showToast("Session locked and signed out.", "info");
+    }
+
+    function setupDashboardForUser(populateInputs = true) {
+      document.getElementById("userRoleBadge").textContent = currentUser.role;
+      document.getElementById("userNameDisplay").textContent = currentUser.name;
+      document.getElementById("userIdDisplay").textContent = currentUser.id;
+      document.getElementById("cliAuthUser").textContent = `${currentUser.name} (${currentUser.id})`;
+
+      if (currentUser.isExec) {
+        document.getElementById("userRoleBadge").className = "text-[9px] uppercase font-mono px-2 py-0.5 rounded-full font-bold bg-amber-950 text-amber-300 border border-amber-700";
+        document.getElementById("execSuitePanel").classList.remove("hidden");
+        document.getElementById("mobileExecNavBtn").classList.remove("hidden");
+        renderExecRoster();
+        renderExecTickets();
+
+        if (!currentUser.isRoot) {
+          document.getElementById("execTabBtn-branding").classList.add("hidden");
+          document.getElementById("execTabBtn-otpgateway").classList.add("hidden");
+          document.getElementById("execTabBtn-recovery").classList.add("hidden");
+        } else {
+          document.getElementById("execTabBtn-branding").classList.remove("hidden");
+          document.getElementById("execTabBtn-otpgateway").classList.remove("hidden");
+          document.getElementById("execTabBtn-recovery").classList.remove("hidden");
+
+          if (populateInputs) {
+            document.getElementById("brandNameInput").value = stateConfig.name || "";
+            document.getElementById("brandSloganInput").value = stateConfig.slogan || "";
+            document.getElementById("brandAlertInput").value = stateConfig.alert || "";
+            document.getElementById("viewNodeInput").value = stateConfig.nodeName || "KOL-SALT-LAKE-01";
+            document.getElementById("viewDirectiveInput").value = stateConfig.directive || "";
+
+            const mods = stateConfig.modules || { sim: true, rf: true, cli: true, tickets: true };
+            document.getElementById("modToggleSim").checked = !!mods.sim;
+            document.getElementById("modToggleRf").checked = !!mods.rf;
+            document.getElementById("modToggleCli").checked = !!mods.cli;
+            document.getElementById("modToggleTickets").checked = !!mods.tickets;
+
+            const gw = stateConfig.otpGateway || {};
+            document.getElementById("otpEmailjsService").value = gw.emailjsServiceId || "";
+            document.getElementById("otpEmailjsTemplate").value = gw.emailjsTemplateId || "";
+            document.getElementById("otpEmailjsKey").value = gw.emailjsPublicKey || "";
+            document.getElementById("otpSmsUrl").value = gw.smsWebhookUrl || "";
+            document.getElementById("otpSmsKey").value = gw.smsApiKey || "";
+            document.getElementById("otpRequireLoginCheck").checked = gw.requireLoginOtp !== false;
+          }
+        }
+      } else {
+        document.getElementById("userRoleBadge").className = "text-[9px] uppercase font-mono px-2 py-0.5 rounded-full font-bold bg-cyan-950 text-cyan-300 border border-cyan-800";
+        document.getElementById("execSuitePanel").classList.add("hidden");
+        document.getElementById("mobileExecNavBtn").classList.add("hidden");
+      }
+
+      document.getElementById("empProfileName").textContent = currentUser.name;
+      document.getElementById("empProfileId").textContent = currentUser.id;
+      document.getElementById("empProfileRole").textContent = currentUser.role;
+      document.getElementById("empProfileEmail").textContent = currentUser.email;
+      document.getElementById("empAvatarInitial").textContent = currentUser.name.slice(0, 2).toUpperCase();
+    }
+
+    function switchExecTab(tab) {
+      const tabs = ["roster", "empview", "otpgateway", "branding", "tickets", "recovery"];
+      tabs.forEach(t => {
+        const content = document.getElementById(`execTabContent-${t}`);
+        const btn = document.getElementById(`execTabBtn-${t}`);
+        if (content) content.classList.toggle("hidden", t !== tab);
+        if (btn) {
+          btn.className = t === tab 
+            ? "px-3.5 py-1.5 rounded-xl bg-cyan-500 text-slate-950 font-bold transition-all" 
+            : "px-3.5 py-1.5 rounded-xl text-slate-400 hover:text-white transition-all";
+        }
+      });
+    }
+
+    function getNextOperatorId() {
+      let maxNum = 0;
+      stateUsers.forEach(u => {
+        if (u.id && u.id.startsWith("RVX-")) {
+          const num = parseInt(u.id.replace("RVX-", ""), 10);
+          if (!isNaN(num) && num > maxNum) maxNum = num;
+        }
+      });
+      return "RVX-" + String(maxNum + 1).padStart(3, "0");
+    }
+
+    function renderExecRoster() {
+      const tbody = document.getElementById("execRosterTableBody");
+      tbody.innerHTML = "";
+      const employees = stateUsers.filter(u => !u.isExec);
+      document.getElementById("rosterCountBadge").textContent = `${employees.length} Active`;
+
+      if (!employees.length) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-slate-500">No operators registered yet.</td></tr>`;
+        return;
+      }
+
+      employees.forEach(u => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-900/50 transition-colors";
+        tr.innerHTML = `
+          <td class="py-2.5 pr-3 text-cyan-400 font-bold whitespace-nowrap">${u.id}</td>
+          <td class="py-2.5 pr-3 text-white font-semibold whitespace-nowrap">${u.name}</td>
+          <td class="py-2.5 pr-3 text-slate-300 whitespace-nowrap">${u.email}</td>
+          <td class="py-2.5 pr-3 text-slate-400 whitespace-nowrap">${u.role}</td>
+          <td class="py-2.5 pr-3 text-orange-400 font-mono font-bold whitespace-nowrap">${u.pass}</td>
+          <td class="py-2.5 text-right space-x-3 whitespace-nowrap">
+            <button onclick="promptOverridePassword('${u.id}')" title="Change Password" class="text-cyan-400 hover:text-cyan-300 p-1">
+              <i class="fa-solid fa-key"></i>
+            </button>
+            <button onclick="promptRemoveEmployee('${u.id}')" title="Remove Operator" class="text-rose-400 hover:text-rose-300 p-1">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function promptOverridePassword(id) {
+      const target = stateUsers.find(u => u.id === id);
+      if (!target) return;
+      openAppDialog({
+        title: `<i class="fa-solid fa-key text-cyan-400"></i><span>Override Password</span>`,
+        message: `Enter a new password for ${target.name} (${target.id}):`,
+        showInput: true,
+        defaultValue: target.pass,
+        confirmText: "Save Password",
+        onConfirm: (newPass) => {
+          if (newPass && newPass.trim().length >= 4) {
+            target.pass = newPass.trim();
+            syncToCloud();
+            renderExecRoster();
+            showToast(`Updated password for ${target.id} to ${target.pass}`, "success");
+          } else {
+            showToast("Password must be at least 4 characters.", "error");
+          }
+        }
+      });
+    }
+
+    function promptRemoveEmployee(id) {
+      const target = stateUsers.find(u => u.id === id);
+      if (!target) return;
+      openAppDialog({
+        title: `<i class="fa-solid fa-user-slash text-rose-400"></i><span>Revoke Operator</span>`,
+        message: `Permanently delete ${target.name} (${target.id}) from the Firebase database?`,
+        confirmText: "Remove",
+        danger: true,
+        onConfirm: () => {
+          stateUsers = stateUsers.filter(u => u.id !== id);
+          syncToCloud();
+          renderExecRoster();
+          showToast(`Operator ${id} removed from server.`, "info");
+        }
+      });
+    }
+
+    function handleExecProvision(e) {
+      e.preventDefault();
+      const name = document.getElementById("execNewName").value.trim();
+      const email = document.getElementById("execNewEmail").value.trim().toLowerCase();
+      const phone = document.getElementById("execNewPhone").value.trim();
+      const role = document.getElementById("execNewRole").value.trim();
+
+      const id = getNextOperatorId();
+      const pass = "RevX@" + Math.floor(1000 + Math.random() * 9000);
+
+      stateUsers.push({ id, pass, name, role, email, phone, isExec: false, isRoot: false });
+      syncToCloud();
+      renderExecRoster();
+      e.target.reset();
+      showToast(`Created ${id} • Pass: ${pass}`, "success");
+    }
+
+    // Gmail + Real OTP Self-Registration Flow
+    function toggleRegisterModal(show) {
+      document.getElementById("registerModal").classList.toggle("hidden", !show);
+      if (show) resetRegForms();
+    }
+
+    function closeRegisterModal() {
+      pendingRegOtp = null;
+      document.getElementById("registerModal").classList.add("hidden");
+    }
+
+    function resetRegForms() {
+      pendingRegOtp = null;
+      document.getElementById("regStep1Form").classList.remove("hidden");
+      document.getElementById("regStep2Form").classList.add("hidden");
+      document.getElementById("regStep1Error").classList.add("hidden");
+      document.getElementById("regStep2Error").classList.add("hidden");
+    }
+
+    async function handleRegSendOtp(e) {
+      e.preventDefault();
+      const name = document.getElementById("regFullName").value.trim();
+      const email = document.getElementById("regEmail").value.trim().toLowerCase();
+      const phone = document.getElementById("regPhone").value.trim();
+      const role = document.getElementById("regRole").value;
+      const pass = document.getElementById("regPassword").value.trim();
+      const errBox = document.getElementById("regStep1Error");
+      const btn = document.getElementById("regSendOtpBtn");
+
+      if (!email.endsWith("@gmail.com")) {
+        errBox.textContent = "Registration strictly requires a valid @gmail.com address.";
+        errBox.classList.remove("hidden");
+        return;
+      }
+
+      if (stateUsers.some(u => u.email && u.email.toLowerCase() === email)) {
+        errBox.textContent = "This Gmail address is already registered. Please log in.";
+        errBox.classList.remove("hidden");
+        return;
+      }
+
+      errBox.classList.add("hidden");
+      btn.disabled = true;
+      btn.textContent = "Sending Real OTP to Gmail...";
+
+      const code = generateCryptographicOtp();
+      const dispatchRes = await dispatchRealOtp({ email, phone, name, code });
+
+      btn.disabled = false;
+      btn.textContent = "Send Verification OTP to Gmail";
+
+      if (!dispatchRes.ok) {
+        errBox.textContent = dispatchRes.reason;
+        errBox.classList.remove("hidden");
+        return;
+      }
+
+      // Stored in memory only (never displayed in UI)
+      pendingRegOtp = {
+        code,
+        expiresAt: Date.now() + 5 * 60 * 1000,
+        attempts: 0,
+        draft: { name, email, phone, role, pass }
+      };
+
+      document.getElementById("regTargetEmailLabel").textContent = email;
+      document.getElementById("regOtpCodeInput").value = "";
+      document.getElementById("regStep1Form").classList.add("hidden");
+      document.getElementById("regStep2Form").classList.remove("hidden");
+    }
+
+    function handleRegVerifyOtp(e) {
+      e.preventDefault();
+      const entered = document.getElementById("regOtpCodeInput").value.trim();
+      const errBox = document.getElementById("regStep2Error");
+
+      if (!pendingRegOtp) {
+        resetRegForms();
+        return;
+      }
+
+      if (Date.now() > pendingRegOtp.expiresAt) {
+        errBox.textContent = "OTP expired. Go back and request a fresh code.";
+        errBox.classList.remove("hidden");
+        return;
+      }
+
+      pendingRegOtp.attempts += 1;
+      if (pendingRegOtp.attempts > 3) {
+        resetRegForms();
+        showToast("Too many invalid OTP attempts.", "error");
+        return;
+      }
+
+      if (entered !== pendingRegOtp.code) {
+        errBox.textContent = `Incorrect OTP (${3 - pendingRegOtp.attempts} attempts left).`;
+        errBox.classList.remove("hidden");
+        return;
+      }
+
+      const d = pendingRegOtp.draft;
+      pendingRegOtp = null;
+
+      const id = getNextOperatorId();
+      const newAccount = {
+        id,
+        pass: d.pass,
+        name: d.name,
+        role: d.role,
+        email: d.email,
+        phone: d.phone,
+        isExec: false,
+        isRoot: false
+      };
+
+      stateUsers.push(newAccount);
+      syncToCloud();
+      closeRegisterModal();
+      document.getElementById("regStep1Form").reset();
+
+      currentUser = newAccount;
+      localStorage.setItem("revx_saved_session_id", id);
+      document.getElementById("authScreen").classList.add("hidden");
+      document.getElementById("portalDashboard").classList.remove("hidden");
+      setupDashboardForUser(true);
+      showToast(`Verified! Your Operator ID is ${id}`, "success");
+    }
+
+    // Executive: Save Employee View Studio
+    function handleSaveEmployeeView(e) {
+      e.preventDefault();
+      stateConfig.nodeName = document.getElementById("viewNodeInput").value.trim() || "KOL-SALT-LAKE-01";
+      stateConfig.directive = document.getElementById("viewDirectiveInput").value.trim() || "All 5G SA sectors operating at 100% SLA.";
+      stateConfig.modules = {
+        sim: document.getElementById("modToggleSim").checked,
+        rf: document.getElementById("modToggleRf").checked,
+        cli: document.getElementById("modToggleCli").checked,
+        tickets: document.getElementById("modToggleTickets").checked
+      };
+      syncToCloud();
+      renderBrandingAndViewUI();
+      showToast("Employee view updated across all devices!", "success");
+    }
+
+    // Executive: Save Real OTP Gateway Keys
+    function handleSaveOtpGateway(e) {
+      e.preventDefault();
+      stateConfig.otpGateway = {
+        emailjsServiceId: document.getElementById("otpEmailjsService").value.trim(),
+        emailjsTemplateId: document.getElementById("otpEmailjsTemplate").value.trim(),
+        emailjsPublicKey: document.getElementById("otpEmailjsKey").value.trim(),
+        smsWebhookUrl: document.getElementById("otpSmsUrl").value.trim(),
+        smsApiKey: document.getElementById("otpSmsKey").value.trim(),
+        requireLoginOtp: document.getElementById("otpRequireLoginCheck").checked
+      };
+      syncToCloud();
+      showToast("Real OTP Gateway settings synced to Firebase!", "success");
+    }
+
+    async function sendTestGatewayOtp() {
+      const code = generateCryptographicOtp();
+      const res = await dispatchRealOtp({
+        email: currentUser.email,
+        phone: currentUser.phone,
+        name: currentUser.name,
+        code
+      });
+      if (res.ok) {
+        showToast(`Test OTP sent to ${currentUser.email}! Check your Gmail inbox.`, "success");
+      } else {
+        showToast(res.reason, "error");
+      }
+    }
+
+    function handleSaveBranding(e) {
+      e.preventDefault();
+      stateConfig.name = document.getElementById("brandNameInput").value.trim() || stateConfig.name;
+      stateConfig.slogan = document.getElementById("brandSloganInput").value.trim() || stateConfig.slogan;
+      stateConfig.alert = document.getElementById("brandAlertInput").value.trim() || stateConfig.alert;
+
+      const fileInput = document.getElementById("brandLogoFileInput");
+      if (fileInput.files && fileInput.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+          stateConfig.logo = evt.target.result;
+          syncToCloud();
+          renderBrandingAndViewUI();
+          showToast("Brand identity & logo synced globally!", "success");
+        };
+        reader.readAsDataURL(fileInput.files[0]);
+      } else {
+        syncToCloud();
+        renderBrandingAndViewUI();
+        showToast("Brand details synced to Firebase!", "success");
+      }
+    }
+
+    function renderExecTickets() {
+      const container = document.getElementById("execTicketContainer");
+      if (!stateTickets.length) {
+        container.innerHTML = `<div class="text-slate-500 py-3">No incident reports logged yet.</div>`;
+        return;
+      }
+      container.innerHTML = stateTickets.map(t => `
+        <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl space-y-1">
+          <div class="flex justify-between items-center text-[10px]">
+            <span class="text-cyan-400 font-bold">${t.author}</span>
+            <span class="text-slate-500">${t.time}</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="px-2 py-0.5 rounded text-[9px] font-bold shrink-0 ${t.priority.includes('P1') ? 'bg-rose-950 text-rose-300 border border-rose-800' : 'bg-slate-900 text-cyan-300 border border-slate-800'}">${t.priority}</span>
+            <span class="text-slate-200 text-xs">${t.note}</span>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    function promptClearTickets() {
+      openAppDialog({
+        title: `<i class="fa-solid fa-trash text-rose-400"></i><span>Clear Incident Ledger</span>`,
+        message: "Clear all operator shift reports from the global database?",
+        confirmText: "Clear All",
+        danger: true,
+        onConfirm: () => {
+          stateTickets = [];
+          syncToCloud();
+          renderExecTickets();
+          showToast("Incident ledger cleared.", "info");
+        }
+      });
+    }
+
+    // === BACKUP EXPORT & UPLOAD / RESTORE ===
+
+    function downloadJsonBackup() {
+      const data = {
+        users: stateUsers,
+        config: stateConfig,
+        tickets: stateTickets,
+        exportedAt: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `RevX_Employee_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      showToast("Backup .json downloaded. Edit and re-upload anytime!", "success");
+    }
+
+    function handleRestoreBackupFile(event) {
+      const file = event.target.files && event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const parsed = JSON.parse(evt.target.result);
+          const incomingUsers = Array.isArray(parsed) ? parsed : parsed.users;
+
+          if (!Array.isArray(incomingUsers) || incomingUsers.length === 0) {
+            showToast("Invalid backup file: missing 'users' list.", "error");
+            return;
+          }
+
+          // Sanitize and validate every user record
+          const cleanedUsers = incomingUsers
+            .filter(u => u && u.id && u.name && u.pass)
+            .map(u => ({
+              id: String(u.id).trim().toUpperCase(),
+              pass: String(u.pass).trim(),
+              name: String(u.name).trim(),
+              role: String(u.role || "Operator").trim(),
+              email: String(u.email || "").trim().toLowerCase(),
+              phone: String(u.phone || "").trim(),
+              isExec: Boolean(u.isExec),
+              isRoot: Boolean(u.isRoot)
+            }));
+
+          // Guarantee Root CEO account always remains intact so admin is never locked out
+          if (!cleanedUsers.some(u => u.id === "REVX-EXEC-01")) {
+            cleanedUsers.unshift(MASTER_SEED_USERS[0]);
+          }
+
+          stateUsers = cleanedUsers;
+          if (parsed.config && typeof parsed.config === "object") {
+            stateConfig = Object.assign({}, stateConfig, parsed.config);
+          }
+          if (Array.isArray(parsed.tickets)) {
+            stateTickets = parsed.tickets;
+          }
+
+          syncToCloud();
+          renderBrandingAndViewUI();
+          renderExecRoster();
+          renderExecTickets();
+          showToast(`Updated ${cleanedUsers.length} accounts & synced to Firebase!`, "success");
+        } catch (err) {
+          console.error("Backup parse error:", err);
+          showToast("Could not read JSON file. Check file formatting.", "error");
+        } finally {
+          event.target.value = "";
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function promptFactoryReset() {
+      openAppDialog({
+        title: `<i class="fa-solid fa-triangle-exclamation text-rose-400"></i><span>Factory Reset Database</span>`,
+        message: "Reset all operator accounts and branding on Firebase back to original defaults?",
+        confirmText: "Reset Now",
+        danger: true,
+        onConfirm: () => {
+          stateUsers = MASTER_SEED_USERS;
+          stateConfig = MASTER_SEED_CONFIG;
+          stateTickets = [];
+          syncToCloud();
+          renderBrandingAndViewUI();
+          if (currentUser && currentUser.isExec) {
+            renderExecRoster();
+            renderExecTickets();
+          }
+          showToast("Firebase database restored to factory defaults.", "info");
+        }
+      });
+    }
+
+    // === OPERATOR WORKSTATION MODULES ===
+
+    function generateRandomImsi() {
+      const random = "8991" + Math.floor(1000000000000000 + Math.random() * 9000000000000000);
+      document.getElementById("simImsiInput").value = random;
+    }
+
+    function handleProvisionSim(e) {
+      e.preventDefault();
+      const imsi = document.getElementById("simImsiInput").value.trim();
+      const apn = document.getElementById("simApnSelect").value;
+      const out = document.getElementById("simProvisionOutput");
+      out.classList.remove("hidden");
+      out.innerHTML = `
+        <div class="text-cyan-400 font-bold">HSS/UDM Core Authenticated:</div>
+        <div>IMSI: <span class="text-white">${imsi}</span></div>
+        <div>APN: <span class="text-emerald-400 font-bold">${apn}</span></div>
+        <div>Vector: <span class="text-slate-400">KASME-${Math.random().toString(36).substring(2, 10).toUpperCase()}</span></div>
+        <div class="text-emerald-400 font-bold">Status: Active on 5G Standalone</div>
+      `;
+      showToast("SIM provisioned on 5G Core.", "success");
+    }
+
+    function updateBandParameters() {
+      const band = document.getElementById("bandSelect").value;
+      const rsrpText = document.getElementById("rsrpValueText");
+      const rsrpBar = document.getElementById("rsrpBar");
+      if (band === "n78") {
+        rsrpText.textContent = "-78 dBm (C-Band High Throughput)";
+        rsrpBar.style.width = "88%";
+      } else if (band === "n28") {
+        rsrpText.textContent = "-65 dBm (Sub-1GHz Wide Coverage)";
+        rsrpBar.style.width = "96%";
+      } else {
+        rsrpText.textContent = "-92 dBm (mmWave Ultra-Dense)";
+        rsrpBar.style.width = "68%";
+      }
+    }
+
+    function runPacketPingTest() {
+      const btn = document.getElementById("btnPingTest");
+      btn.innerHTML = `<i class="fa-solid fa-spinner animate-spin"></i><span>Testing Latency...</span>`;
+      setTimeout(() => {
+        const ms = Math.floor(9 + Math.random() * 8);
+        document.getElementById("pingValueBadge").textContent = `${ms}ms`;
+        document.getElementById("pingTraceLog").innerHTML = `UPF 10.0.0.1: 56 bytes, RTT=${ms}.2ms, TTL=64. 0% loss.`;
+        btn.innerHTML = `<i class="fa-solid fa-stopwatch"></i><span>Run Core Ping Test</span>`;
+        showToast(`Core RTT measured at ${ms}ms`, "info");
+      }, 600);
+    }
+
+    function handleEmpUpdateOwnPassword(e) {
+      e.preventDefault();
+      const newP = document.getElementById("empSelfNewPass").value.trim();
+      const idx = stateUsers.findIndex(u => u.id === currentUser.id);
+      if (idx !== -1) {
+        stateUsers[idx].pass = newP;
+        currentUser.pass = newP;
+        syncToCloud();
+        document.getElementById("empSelfNewPass").value = "";
+        showToast("Your new password is saved to Firebase!", "success");
+      }
+    }
+
+    function handleTransmitTicket(e) {
+      e.preventDefault();
+      const priority = document.getElementById("empTicketPriority").value;
+      const note = document.getElementById("empTicketDetails").value.trim();
+      const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+      stateTickets.unshift({
+        author: `${currentUser.name} (${currentUser.id})`,
+        priority,
+        note,
+        time
+      });
+
+      syncToCloud();
+      document.getElementById("empTicketDetails").value = "";
+      showToast("Shift report transmitted to live NOC feed!", "success");
+    }
+
+    function handleExecuteCli(e) {
+      e.preventDefault();
+      const input = document.getElementById("cliCommandInput");
+      const cmd = input.value.trim();
+      if (!cmd) return;
+      const terminal = document.getElementById("cliOutputArea");
+
+      const entry = document.createElement("div");
+      entry.innerHTML = `<span class="text-cyan-400 font-bold">revx#</span> <span class="text-white">${cmd}</span>`;
+      terminal.appendChild(entry);
+
+      const parts = cmd.toLowerCase().split(" ");
+      const main = parts[0];
+      const resp = document.createElement("div");
+      resp.className = "text-slate-300 pl-2";
+
+      if (main === "help") {
+        resp.innerHTML = `Commands:<br>• <strong>status</strong>: Check 5G Core nodes<br>• <strong>ping [host]</strong>: Test ICMP latency<br>• <strong>nodes</strong>: Active gNodeB cell sites<br>• <strong>whoami</strong>: Active operator session<br>• <strong>clear</strong>: Clear screen`;
+      } else if (main === "status") {
+        resp.innerHTML = `<span class="text-emerald-400 font-bold">AMF: UP</span> | <span class="text-emerald-400 font-bold">SMF: UP</span> | <span class="text-emerald-400 font-bold">UPF: UP</span> | Firebase Sync: <span class="text-cyan-400">ONLINE</span>`;
+      } else if (main === "nodes") {
+        resp.innerHTML = `Active Cell Sites:<br>• ${stateConfig.nodeName || 'KOL-SALT-LAKE-01'} (n78 3500MHz) [Online]<br>• CC-KOL-LAKE-TOWN (n28 700MHz) [Online]<br>• CC-KOL-PARK-STREET (n258 mmWave) [Online]`;
+      } else if (main === "whoami") {
+        resp.innerHTML = `ID: ${currentUser.id} | Name: ${currentUser.name} | Role: ${currentUser.role}`;
+      } else if (main === "clear") {
+        terminal.innerHTML = "";
+        input.value = "";
+        return;
+      } else if (main === "ping") {
+        resp.innerHTML = `Pinging ${parts[1] || 'core.revx.net'} [10.244.0.1]: 64 bytes, RTT 11.2ms. OK.`;
+      } else {
+        resp.innerHTML = `<span class="text-rose-400">Unknown command '${cmd}'. Type 'help'.</span>`;
+      }
+
+      terminal.appendChild(resp);
+      terminal.scrollTop = terminal.scrollHeight;
+      input.value = "";
+    }
+
+    // Auto-restore saved session on launch
+    renderBrandingAndViewUI();
+    const savedId = localStorage.getItem("revx_saved_session_id");
+    if (savedId) {
+      const savedUser = stateUsers.find(u => u.id === savedId);
+      if (savedUser) {
+        currentUser = savedUser;
+        document.getElementById("authScreen").classList.add("hidden");
+        document.getElementById("portalDashboard").classList.remove("hidden");
+        setupDashboardForUser(true);
+      }
+    }
+  </script>
+</body>
+</html>
